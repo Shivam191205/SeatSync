@@ -51,7 +51,6 @@ export default function SeatSyncRoot() {
     }, 3500);
   };
 
-  const currentUser = state.employees.find(e => e.id === state.currentUserId);
 
   const handleDateSelect = (d) => {
     setState(prev => ({ ...prev, selectedDate: d }));
@@ -68,25 +67,38 @@ export default function SeatSyncRoot() {
     const dk = dateKey(d);
     const batch = getScheduledBatch(d);
     const hol = isHoliday(d);
-    const alloc = {};
-    const seats = [];
-
     // Setup seats array
     ZONES.forEach(z => { for (let i = 1; i <= 8; i++) seats.push({ id: `${z}${i}`, zone: z, type: 'fixed' }); });
     for (let i = 1; i <= 10; i++) seats.push({ id: `F${i}`, zone: 'F', type: 'floater' });
 
-    if (batch === 0 || hol) {
-      seats.forEach(s => { alloc[s.id] = { seat: s, status: hol ? 'holiday' : 'weekend', employee: null }; });
-      return alloc;
-    }
+    // Initialize ALL seats as potentially available
+    seats.forEach(s => {
+      alloc[s.id] = { seat: s, status: hol ? 'holiday' : 'weekend', employee: null };
+    });
 
-    // Auto-assign
+    if (batch === 0 || hol) return alloc;
+    
+    // Set all fixed seats to 'locked' by default for this day (unless they belong to active batch)
+    seats.filter(s => s.type === 'fixed').forEach(s => {
+      alloc[s.id].status = 'locked'; 
+    });
+
+    // Overwrite with Auto-assigned seats for the ACTIVE batch
     const batchSquads = SQUAD_DATA.filter(sq => sq.batch === batch);
     batchSquads.forEach((squad, zoneIdx) => {
       const zone = ZONES[zoneIdx];
+      
+      // Mark all seats in this active zone as 'available' first (if no one is assigned)
+      for(let i=1; i<=8; i++) {
+          alloc[`${zone}${i}`].status = 'available';
+      }
+
       const squadEmployees = state.employees.filter(e => e.squadId === squad.id);
       squadEmployees.forEach((emp, idx) => {
         const seatId = `${zone}${idx + 1}`;
+        const sObj = seats.find(s => s.id === seatId);
+        if (!sObj) return;
+
         const isReleased = state.actions.some(a => a.dateKey === dk && a.seatId === seatId && a.employeeId === emp.id && a.type === 'release');
         const onVacation = state.vacations.some(v => v.employeeId === emp.id && dk >= v.startDate && dk <= v.endDate);
         const booking = state.actions.find(a => a.dateKey === dk && a.seatId === seatId && a.type === 'book');
@@ -94,12 +106,12 @@ export default function SeatSyncRoot() {
         if (isReleased || onVacation) {
           if (booking) {
             const booker = state.employees.find(e => e.id === booking.employeeId);
-            alloc[seatId] = { seat: seats.find(s => s.id === seatId), status: 'booked', employee: booker, releasedBy: emp };
+            alloc[seatId] = { seat: sObj, status: 'booked', employee: booker, releasedBy: emp };
           } else {
-            alloc[seatId] = { seat: seats.find(s => s.id === seatId), status: 'released', employee: null, releasedBy: emp, isVacation: onVacation };
+            alloc[seatId] = { seat: sObj, status: 'released', employee: null, releasedBy: emp, isVacation: onVacation };
           }
         } else {
-          alloc[seatId] = { seat: seats.find(s => s.id === seatId), status: 'occupied', employee: emp };
+          alloc[seatId] = { seat: sObj, status: 'occupied', employee: emp };
         }
       });
     });
