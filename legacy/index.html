@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SeatSync — Smart Seat Booking System</title>
+    <meta name="description" content="Organizational seat booking system for maximum space utilization with smart batch rotation scheduling.">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪑</text></svg>">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Cursor Glow Trail -->
+        <div id="cursor-glow"></div>
+
+        <!-- Confetti Container -->
+        <div id="confetti-container"></div>
+
+        <!-- Toast -->
+        <div id="toast-container"></div>
+
+        <!-- Modal -->
+        <div class="modal-overlay" id="modal-overlay">
+            <div class="modal">
+                <h3 id="modal-title">Confirm</h3>
+                <p id="modal-message"></p>
+                <div class="modal-actions">
+                    <button class="modal-btn secondary" id="modal-cancel">Cancel</button>
+                    <button class="modal-btn primary" id="modal-confirm">Confirm</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vacation Modal -->
+        <div class="modal-overlay" id="vacation-modal-overlay">
+            <div class="modal">
+                <h3>🏖️ Vacation Manager</h3>
+                <p>Plan your leaves. Your seat will be automatically released for the selected period.</p>
+                
+                <div class="vacation-form">
+                    <div class="form-group">
+                        <label>Leave Type</label>
+                        <select id="leave-type">
+                            <option value="Personal">Personal Leave</option>
+                            <option value="Sick">Sick Leave</option>
+                            <option value="Work from Anywhere">Work from Anywhere</option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Start Date</label>
+                            <input type="date" id="vacation-start">
+                        </div>
+                        <div class="form-group">
+                            <label>End Date</label>
+                            <input type="date" id="vacation-end">
+                        </div>
+                    </div>
+                    <div class="balance-info">
+                        Annual Balance: <span id="leave-balance">0 / 15</span> days
+                        <div id="penalty-notif" class="penalty-tag" style="display:none">⚠️ Penalty Applied</div>
+                    </div>
+                    <button class="modal-btn primary" id="vacation-save" style="width:100%; margin-top: 10px;">Save Vacation</button>
+                </div>
+
+                <div class="vacation-list-wrap">
+                    <h4>Scheduled Vacations</h4>
+                    <ul id="vacation-list" class="vac_list"></ul>
+                </div>
+
+                <div class="modal-actions" style="margin-top: 20px;">
+                    <button class="modal-btn secondary" id="vacation-close">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Header -->
+        <header>
+            <div class="logo">
+                <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="2" y="14" width="28" height="4" rx="2" fill="url(#g1)"/>
+                    <rect x="6" y="18" width="4" height="10" rx="1.5" fill="#06b6d4"/>
+                    <rect x="22" y="18" width="4" height="10" rx="1.5" fill="#8b5cf6"/>
+                    <rect x="8" y="6" width="16" height="10" rx="3" fill="url(#g1)"/>
+                    <defs><linearGradient id="g1" x1="0" y1="0" x2="32" y2="32"><stop stop-color="#06b6d4"/><stop offset="1" stop-color="#8b5cf6"/></linearGradient></defs>
+                </svg>
+                <span>SeatSync</span>
+            </div>
+            <div class="header-right">
+                <div class="search-wrap">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                    <input type="text" id="search-employee" placeholder="Find employee...">
+                    <span id="search-result-badge"></span>
+                </div>
+                <span class="week-badge"><span class="dot"></span> Week 1 of 2</span>
+                <span class="clock">--:-- --</span>
+                <div class="user-select-wrap">
+                    <label>👤 Logged in as:</label>
+                    <select id="user-select"></select>
+                </div>
+            </div>
+        </header>
+
+        <!-- Info Bar -->
+        <div class="info-bar">
+            <div class="batch-label">Loading...</div>
+        </div>
+
+        <!-- Calendar -->
+        <section class="calendar-section">
+            <div class="calendar-nav">
+                <h3 class="cal-title">Loading...</h3>
+                <div class="nav-arrows">
+                    <button id="today-btn" class="today-btn" title="Jump to today">📍 Today</button>
+                    <button id="vacation-btn" class="today-btn" title="Manage Vacations">🏖️ Vacation</button>
+                    <button id="prev-cycle" title="Previous Cycle">◀</button>
+                    <button id="next-cycle" title="Next Cycle">▶</button>
+                </div>
+            </div>
+            <div class="kbd-hint">
+                <span class="kbd">←</span><span class="kbd">→</span> Navigate days
+                &nbsp;·&nbsp;
+                <span class="kbd">Esc</span> Close modal
+            </div>
+            <div class="calendar-grid">
+                <div class="week-col">
+                    <h4 id="w1-label">Week 1</h4>
+                    <div class="days-row" id="w1-days"></div>
+                </div>
+                <div class="week-col">
+                    <h4 id="w2-label">Week 2</h4>
+                    <div class="days-row" id="w2-days"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Stats -->
+        <div class="stats-row">
+            <div class="stat-card"><div class="stat-val total" id="stat-total">—</div><div class="stat-label">Total Seats</div></div>
+            <div class="stat-card"><div class="stat-val occupied" id="stat-occupied">—</div><div class="stat-label">Occupied</div></div>
+            <div class="stat-card"><div class="stat-val avail" id="stat-available">—</div><div class="stat-label">Available</div></div>
+            <div class="stat-card"><div class="stat-val released" id="stat-released">—</div><div class="stat-label">Released</div></div>
+            <div class="stat-card"><div class="stat-val util" id="stat-util">—</div><div class="stat-label">Utilization</div></div>
+        </div>
+
+        <!-- Legend -->
+        <div class="legend">
+            <div class="legend-item"><span class="legend-dot occ"></span> Occupied</div>
+            <div class="legend-item"><span class="legend-dot yours"></span> Your Seat</div>
+            <div class="legend-item"><span class="legend-dot avail"></span> Available</div>
+            <div class="legend-item"><span class="legend-dot rel"></span> Released</div>
+            <div class="legend-item"><span class="legend-dot booked"></span> Booked (Guest)</div>
+            <div class="legend-item"><span class="legend-dot floater"></span> Floater</div>
+        </div>
+
+        <!-- Seat Map -->
+        <section class="seatmap-section">
+            <div class="seatmap-title">
+                🏢 Floor Plan — <span class="date-label" id="seatmap-date">Loading...</span>
+            </div>
+            <div class="floor-plan" id="floor-plan"></div>
+        </section>
+
+        <!-- My Schedule -->
+        <section class="schedule-section">
+            <h3>📋 My Schedule — 2-Week Cycle</h3>
+            <table class="schedule-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Day</th>
+                        <th>Status</th>
+                        <th>Seat</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="schedule-body"></tbody>
+            </table>
+        </section>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
