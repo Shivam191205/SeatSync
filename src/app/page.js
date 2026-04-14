@@ -31,6 +31,7 @@ export default function SeatSyncRoot() {
     } catch (err) {
       console.error('Fetch error:', err);
       showToast('Error connecting to database', 'error');
+      setState(prev => ({ ...prev, loading: false }));
     }
   }, []);
 
@@ -127,6 +128,18 @@ export default function SeatSyncRoot() {
   };
 
   if (state.loading) return <div className="loading-spinner">Loading SeatSync...</div>;
+
+  if (state.employees.length === 0) {
+    return (
+      <div className="main-container" style={{display:'flex', alignItems:'center', justifyContent:'center', minHeight:'50vh', flexDirection:'column', gap:'20px'}}>
+        <h2>📭 Database Not Initialized</h2>
+        <p style={{color:'var(--text-secondary)'}}>No employee data found. Please run the seeding script or check your connection.</p>
+        <button className="nav-btn" onClick={() => fetchData(state.selectedDate)}><RefreshCw size={14}/> Retry Connection</button>
+      </div>
+    );
+  }
+
+  const currentUser = state.employees.find(e => e.id === state.currentUserId) || state.employees[0];
 
   return (
     <div className="main-container">
