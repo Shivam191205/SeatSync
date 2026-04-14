@@ -141,20 +141,19 @@ export default function SeatSyncRoot() {
 
   if (state.loading) return <div className="loading-spinner">Loading SeatSync...</div>;
 
-  if (state.employees.length === 0) {
-    return (
-      <div className="main-container" style={{display:'flex', alignItems:'center', justifyContent:'center', minHeight:'50vh', flexDirection:'column', gap:'20px'}}>
-        <h2>📭 Database Not Initialized</h2>
-        <p style={{color:'var(--text-secondary)'}}>No employee data found. Please run the seeding script or check your connection.</p>
-        <button className="nav-btn" onClick={() => fetchData(state.selectedDate)}><RefreshCw size={14}/> Retry Connection</button>
-      </div>
-    );
-  }
+  if (state.loading) return <div className="loading-spinner">Loading SeatSync...</div>;
 
   const currentUser = state.employees.find(e => e.id === state.currentUserId) || state.employees[0];
+  const dbEmpty = state.employees.length === 0;
 
   return (
     <div className="main-container">
+      {dbEmpty && (
+        <div className="info-bar" style={{borderStyle:'dashed', borderColor:'var(--released)', background:'var(--released-bg)', marginTop:'20px'}}>
+             <span style={{color:'var(--released)', fontWeight:'600'}}>📭 Database Empty: No employee data found. Please run your seeding script.</span>
+             <button className="action-btn" onClick={() => fetchData(state.selectedDate)}><RefreshCw size={12}/> Refresh</button>
+        </div>
+      )}
       {state.toast && (
         <div id="toast-container">
           <div className={`toast ${state.toast.type}`}>
