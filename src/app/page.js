@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { getInitialData, addBookingAction, removeBookingAction, saveVacation, deleteVacation } from './actions';
 import { 
   dateKey, getScheduledBatch, getWeekType, getCycleMonday, getWeekDays, 
-  formatDateShort, formatDateFull, isHoliday, DAY_NAMES, isPast, isToday
+  formatDateShort, formatDateFull, isHoliday, DAY_NAMES, isPast, isToday, isBookingOpen
 } from '@/lib/utils';
 import { SQUAD_DATA, ZONES, BOOKING_CUTOFF_HOUR } from '@/lib/constants';
 import { Search, MapPin, Calendar, Umbrella, RefreshCw, X, ChevronLeft, ChevronRight, User } from 'lucide-react';
@@ -259,7 +259,6 @@ function Header({ currentUserId, currentUser, employees, onUserChange, selectedD
           {searchBadge && <span id="search-result-badge">{searchBadge}</span>}
         </div>
         <span className="week-badge">
-          <span className="dot" style={{background: wt === 1 ? 'var(--batch1)' : 'var(--batch2)'}}></span>
           Week {wt} of 2
         </span>
         <div className="user-select-wrap">
@@ -456,7 +455,9 @@ function Seat({ sid, info, user, selectedDate, onAction, searchQuery, hasAnySeat
   if (!info) return null;
   const isYours = info.employee?.id === user?.id;
   const highlight = searchQuery && info.employee?.name.toLowerCase().includes(searchQuery.toLowerCase());
-  const isLocked = isPast(selectedDate) || isToday(selectedDate) || userOnVacation;
+  
+  const bookingOpen = isBookingOpen(selectedDate);
+  const isLocked = isPast(selectedDate) || isToday(selectedDate) || userOnVacation || (!bookingOpen && !isYours);
   const canBook = (info.status === 'available' || (info.status === 'released' && info.releasedBy?.id !== user?.id)) && !hasAnySeat && !isLocked;
   
   let cls = `seat ${highlight ? 'search-highlight' : ''}`;
@@ -488,6 +489,9 @@ function Seat({ sid, info, user, selectedDate, onAction, searchQuery, hasAnySeat
   let title = sid;
   if (!isYours && hasAnySeat && (info.status === 'available' || info.status === 'released')) {
       title += ` (Locked: You already have seat ${hasAnySeat[0]})`;
+  } else if (!bookingOpen && !isYours && (info.status === 'available' || info.status === 'released')) {
+      const prev = new Date(selectedDate); prev.setDate(prev.getDate()-1);
+      title += ` (Booking opens 3 PM on ${prev.getDate()} ${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][prev.getMonth()]})`;
   }
 
   return (
@@ -567,7 +571,7 @@ function MySchedule({ currentUser, cycleOffset, actions, vacations, fetchData, o
               }
             }
 
-            const isLocked = isPast(d) || isToday(d);
+            const isLocked = isPast(d) || isToday(d) || !isBookingOpen(d);
 
             return (
               <tr key={dk} style={{background: today ? 'rgba(59,130,246,0.06)' : 'transparent'}}>

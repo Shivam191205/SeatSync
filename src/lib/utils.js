@@ -39,6 +39,33 @@ export function isToday(d) {
     return dateKey(d) === dateKey(new Date());
 }
 
+export function isBookingOpen(targetDate) {
+    const target = new Date(targetDate); target.setHours(0,0,0,0);
+    const now = new Date();
+    const today = new Date(); today.setHours(0,0,0,0);
+    
+    // Can't book past or today
+    if (target <= today) return false;
+    
+    // Find "Previous Day"
+    const prevDay = new Date(target);
+    prevDay.setDate(prevDay.getDate() - 1);
+    prevDay.setHours(0,0,0,0);
+    
+    // Check if we have already reached or passed the "Previous Day"
+    if (now < prevDay) return false;
+    
+    // If "today" is the previous day, check time/holiday
+    if (dateKey(now) === dateKey(prevDay)) {
+        if (isHoliday(prevDay)) return true; // Holiday: Open all day
+        return now.getHours() >= 15; // Otherwise: 3 PM
+    }
+    
+    // If "today" is even later than the previous day (e.g. today is Tuesday, target is Thursday)
+    // Actually, target > today and now >= previous day implies today is the previous day or later.
+    return true;
+}
+
 export function getCycleMonday(offset, baseDate = new Date()) {
     const monday = new Date(baseDate);
     monday.setDate(baseDate.getDate() - ((baseDate.getDay() + 6) % 7));
