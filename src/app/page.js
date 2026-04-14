@@ -67,6 +67,8 @@ export default function SeatSyncRoot() {
     const dk = dateKey(d);
     const batch = getScheduledBatch(d);
     const hol = isHoliday(d);
+    const alloc = {};
+    const seats = [];
     // Setup seats array
     ZONES.forEach(z => { for (let i = 1; i <= 8; i++) seats.push({ id: `${z}${i}`, zone: z, type: 'fixed' }); });
     for (let i = 1; i <= 10; i++) seats.push({ id: `F${i}`, zone: 'F', type: 'floater' });
